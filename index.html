@@ -1,21 +1,17 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Тайный Санта 🎄</title>
-
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Тайный Санта 🎁</title>
 <style>
 * { box-sizing: border-box; }
-
 body {
   margin: 0;
   font-family: system-ui, Arial, sans-serif;
   background: radial-gradient(circle at top, #123524, #041b12);
   color: #fff;
-  overflow: hidden;
 }
-
 .container {
   min-height: 100vh;
   display: flex;
@@ -24,15 +20,8 @@ body {
   justify-content: center;
   padding: 20px;
   text-align: center;
-  z-index: 2;
-  position: relative;
 }
-
-h1 {
-  color: #ffefc2;
-  margin-bottom: 12px;
-}
-
+h1 { color: #ffefc2; margin-bottom: 16px; }
 select, button {
   width: 100%;
   max-width: 340px;
@@ -42,159 +31,93 @@ select, button {
   border: none;
   margin-bottom: 12px;
 }
+button { background: #c1121f; color: #fff; cursor: pointer; }
+button.secondary { background: #1d6f42; }
+button:disabled { background: #555; }
 
-button {
-  background: #c1121f;
-  color: #fff;
-  cursor: pointer;
-}
-
-button.secondary {
-  background: #1d6f42;
-}
-
-button:disabled {
-  background: #666;
-}
-
-#wheel-wrapper {
-  width: min(85vw, 320px);
-  height: min(85vw, 320px);
-  position: relative;
-  margin-top: 20px;
-}
-
-#wheel {
+/* АНИМАЦИЯ */
+#animationBox {
   width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  border: 10px solid #ffefc2;
-  transition: transform 4.8s cubic-bezier(.08,.82,.17,1);
-}
-
-.pointer {
-  position: absolute;
-  top: -18px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 0;
-  height: 0;
-  border-left: 16px solid transparent;
-  border-right: 16px solid transparent;
-  border-bottom: 28px solid #ffd166;
-  z-index: 5;
-}
-
-.label {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform-origin: 0% 0%;
+  max-width: 340px;
+  height: 90px;
+  margin-top: 20px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
   font-weight: 700;
-  font-size: .85rem;
-  color: #042015;
+  overflow: hidden;
+}
+.name {
+  animation: flicker 0.12s infinite;
+}
+@keyframes flicker {
+  0% { opacity: .2 }
+  50% { opacity: 1 }
+  100% { opacity: .2 }
 }
 
 .admin-btn {
   position: fixed;
   right: 12px;
   bottom: 12px;
-  font-size: 12px;
+  font-size: 13px;
   opacity: .6;
   cursor: pointer;
 }
-
-.locked {
-  color: #ffd166;
-  font-size: 1.2rem;
-  margin-bottom: 10px;
-}
-
-/* снег */
-.snow {
-  position: fixed;
-  top: -10vh;
-  pointer-events: none;
-  z-index: 10;
-  animation: snow linear infinite;
-}
-@keyframes snow {
-  to { transform: translateY(110vh); }
-}
+.locked { color: #ffd166; margin-bottom: 10px; font-size: 1.2rem; }
 </style>
 </head>
-
 <body>
-
 <div class="container">
   <h1>🎅 Тайный Санта 🎄</h1>
 
   <div id="lockMsg" class="locked" style="display:none">Игра завершена 🎁</div>
 
   <select id="player"></select>
-  <button onclick="play()">Играть</button>
-  <button class="secondary" id="showBtn" style="display:none" onclick="showAgain()">Показать результат ещё раз</button>
+  <button id="playBtn">Играть</button>
+  <button id="showBtn" class="secondary" style="display:none">Показать результат ещё раз</button>
 
-  <div id="wheel-wrapper">
-    <div class="pointer"></div>
-    <div id="wheel"></div>
-  </div>
+  <div id="animationBox">Готовы?</div>
 </div>
 
-<div class="admin-btn" onclick="admin()">Админ</div>
+<div class="admin-btn" id="adminBtn">Админ</div>
 
 <script>
-/* ОДИН порядок — и для логики, и для барабана */
-const SECTORS = ["Земфира","Елдос","Арслан","Азамат","Ернар"];
-const COLORS  = ["#c1121f","#1d6f42","#457b9d","#e9c46a","#a8dadc"];
+const PLAYERS = ["Земфира","Елдос","Арслан","Азамат","Ернар"];
 const ADMIN_PASSWORD = "Ars";
 
-let state = JSON.parse(localStorage.getItem("santa")) || {
-  available: [...SECTORS],
+let state = JSON.parse(localStorage.getItem("santa_simple")) || {
+  available: [...PLAYERS],
   results: {},
   locked: false
 };
 
+const playerSel = document.getElementById("player");
+const box = document.getElementById("animationBox");
+const playBtn = document.getElementById("playBtn");
+const showBtn = document.getElementById("showBtn");
+const lockMsg = document.getElementById("lockMsg");
+
 function save() {
-  localStorage.setItem("santa", JSON.stringify(state));
+  localStorage.setItem("santa_simple", JSON.stringify(state));
 }
 
 function init() {
-  drawWheel();
   fillPlayers();
-  snow();
   if (state.locked) lockUI();
 }
 
-function drawWheel() {
-  const wheel = document.getElementById("wheel");
-  const step = 360 / SECTORS.length;
-
-  let bg = "conic-gradient(";
-  SECTORS.forEach((_, i) => {
-    bg += `${COLORS[i]} ${i*step}deg ${(i+1)*step}deg,`;
-  });
-  wheel.style.background = bg.slice(0,-1);
-
-  wheel.innerHTML = "";
-  SECTORS.forEach((name, i) => {
-    const d = document.createElement("div");
-    d.className = "label";
-    d.style.transform = `rotate(${i*step}deg) translate(12px,-50%)`;
-    d.textContent = name;
-    wheel.appendChild(d);
-  });
-}
-
 function fillPlayers() {
-  const s = document.getElementById("player");
-  s.innerHTML = `<option value="">Выбери себя</option>`;
-  SECTORS.forEach(n => {
-    if (!state.results[n]) {
+  playerSel.innerHTML = `<option value="">Выбери себя</option>`;
+  PLAYERS.forEach(p => {
+    if (!state.results[p]) {
       const o = document.createElement("option");
-      o.value = n;
-      o.textContent = n;
-      s.appendChild(o);
+      o.value = p;
+      o.textContent = p;
+      playerSel.appendChild(o);
     }
   });
 }
@@ -202,47 +125,45 @@ function fillPlayers() {
 function play() {
   if (state.locked) return;
 
-  const p = player.value;
+  const p = playerSel.value;
   if (!p) return alert("Выбери себя");
 
-  if (state.results[p]) return show(p);
+  if (state.results[p]) return showResult(p);
 
   const pool = state.available.filter(n => n !== p);
-  const target = pool[Math.floor(Math.random()*pool.length)];
+  const target = pool[Math.floor(Math.random() * pool.length)];
 
-  state.results[p] = target;
-  state.available = state.available.filter(n => n !== target);
-  save();
-
-  spin(target);
-}
-
-function spin(target) {
-  const index = SECTORS.indexOf(target);
-  const step = 360 / SECTORS.length;
-  const angle = 360 - (index*step + step/2);
-  const turns = 6 + Math.floor(Math.random()*3);
-
-  wheel.style.transform = `rotate(${turns*360 + angle}deg)`;
-
-  setTimeout(() => {
-    alert("🎁 Вы дарите подарок: " + target);
+  animateToResult(target, () => {
+    state.results[p] = target;
+    state.available = state.available.filter(n => n !== target);
+    save();
     showBtn.style.display = "block";
     checkLock();
-  }, 4800);
+  });
 }
 
-function show(player) {
-  alert("🎁 Вы дарите подарок: " + state.results[player]);
+function animateToResult(target, done) {
+  let i = 0;
+  const interval = setInterval(() => {
+    box.innerHTML = `<span class='name'>${PLAYERS[i % PLAYERS.length]}</span>`;
+    i++;
+  }, 120);
+
+  setTimeout(() => {
+    clearInterval(interval);
+    box.innerHTML = `🎁 <b>${target}</b>`;
+    alert("Вы дарите подарок: " + target);
+    done();
+  }, 2500);
 }
 
-function showAgain() {
-  const p = player.value;
-  if (p) show(p);
+function showResult(p) {
+  box.innerHTML = `🎁 <b>${state.results[p]}</b>`;
+  alert("Вы дарите подарок: " + state.results[p]);
 }
 
 function checkLock() {
-  if (Object.keys(state.results).length === SECTORS.length) {
+  if (Object.keys(state.results).length === PLAYERS.length) {
     state.locked = true;
     save();
     lockUI();
@@ -251,33 +172,26 @@ function checkLock() {
 
 function lockUI() {
   lockMsg.style.display = "block";
-  player.disabled = true;
+  playerSel.disabled = true;
+  playBtn.disabled = true;
 }
 
 function admin() {
-  const p = prompt("Пароль админа");
-  if (p !== ADMIN_PASSWORD) return alert("Неверный пароль");
+  const pass = prompt("Пароль админа");
+  if (pass !== ADMIN_PASSWORD) return alert("Неверный пароль");
 
   let text = "Результаты:\n";
   for (let k in state.results) text += `${k} → ${state.results[k]}\n`;
 
-  if (confirm(text + "\nСБРОСИТЬ ВСЁ?")) {
-    localStorage.removeItem("santa");
+  if (confirm(text + "\n\nСБРОСИТЬ ВСЁ?")) {
+    localStorage.removeItem("santa_simple");
     location.reload();
   }
 }
 
-function snow() {
-  for (let i=0;i<40;i++){
-    const s=document.createElement("div");
-    s.className="snow";
-    s.textContent="❄";
-    s.style.left=Math.random()*100+"vw";
-    s.style.fontSize=10+Math.random()*18+"px";
-    s.style.animationDuration=6+Math.random()*10+"s";
-    document.body.appendChild(s);
-  }
-}
+playBtn.onclick = play;
+showBtn.onclick = () => showResult(playerSel.value);
+document.getElementById("adminBtn").onclick = admin;
 
 init();
 </script>
