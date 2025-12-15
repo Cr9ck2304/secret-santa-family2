@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Тайный Санта 🎄</title>
+
+<style>
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: system-ui, Arial, sans-serif;
+  background: radial-gradient(circle at top, #123524, #041b12);
+  color: #fff;
+  overflow: hidden;
+}
+
+.container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  text-align: center;
+  z-index: 2;
+  position: relative;
+}
+
+h1 {
+  color: #ffefc2;
+  margin-bottom: 12px;
+}
+
+select, button {
+  width: 100%;
+  max-width: 340px;
+  padding: 14px;
+  font-size: 1.1rem;
+  border-radius: 14px;
+  border: none;
+  margin-bottom: 12px;
+}
+
+button {
+  background: #c1121f;
+  color: #fff;
+  cursor: pointer;
+}
+
+button.secondary {
+  background: #1d6f42;
+}
+
+button:disabled {
+  background: #666;
+}
+
+#wheel-wrapper {
+  width: min(85vw, 320px);
+  height: min(85vw, 320px);
+  position: relative;
+  margin-top: 20px;
+}
+
+#wheel {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 10px solid #ffefc2;
+  transition: transform 4.8s cubic-bezier(.08,.82,.17,1);
+}
+
+.pointer {
+  position: absolute;
+  top: -18px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 16px solid transparent;
+  border-right: 16px solid transparent;
+  border-bottom: 28px solid #ffd166;
+  z-index: 5;
+}
+
+.label {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform-origin: 0% 0%;
+  font-weight: 700;
+  font-size: .85rem;
+  color: #042015;
+}
+
+.admin-btn {
+  position: fixed;
+  right: 12px;
+  bottom: 12px;
+  font-size: 12px;
+  opacity: .6;
+  cursor: pointer;
+}
+
+.locked {
+  color: #ffd166;
+  font-size: 1.2rem;
+  margin-bottom: 10px;
+}
+
+/* снег */
+.snow {
+  position: fixed;
+  top: -10vh;
+  pointer-events: none;
+  z-index: 10;
+  animation: snow linear infinite;
+}
+@keyframes snow {
+  to { transform: translateY(110vh); }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+  <h1>🎅 Тайный Санта 🎄</h1>
+
+  <div id="lockMsg" class="locked" style="display:none">Игра завершена 🎁</div>
+
+  <select id="player"></select>
+  <button onclick="play()">Играть</button>
+  <button class="secondary" id="showBtn" style="display:none" onclick="showAgain()">Показать результат ещё раз</button>
+
+  <div id="wheel-wrapper">
+    <div class="pointer"></div>
+    <div id="wheel"></div>
+  </div>
+</div>
+
+<div class="admin-btn" onclick="admin()">Админ</div>
+
+<script>
+/* ОДИН порядок — и для логики, и для барабана */
+const SECTORS = ["Земфира","Елдос","Арслан","Азамат","Ернар"];
+const COLORS  = ["#c1121f","#1d6f42","#457b9d","#e9c46a","#a8dadc"];
+const ADMIN_PASSWORD = "Ars";
+
+let state = JSON.parse(localStorage.getItem("santa")) || {
+  available: [...SECTORS],
+  results: {},
+  locked: false
+};
+
+function save() {
+  localStorage.setItem("santa", JSON.stringify(state));
+}
+
+function init() {
+  drawWheel();
+  fillPlayers();
+  snow();
+  if (state.locked) lockUI();
+}
+
+function drawWheel() {
+  const wheel = document.getElementById("wheel");
+  const step = 360 / SECTORS.length;
+
+  let bg = "conic-gradient(";
+  SECTORS.forEach((_, i) => {
+    bg += `${COLORS[i]} ${i*step}deg ${(i+1)*step}deg,`;
+  });
+  wheel.style.background = bg.slice(0,-1);
+
+  wheel.innerHTML = "";
+  SECTORS.forEach((name, i) => {
+    const d = document.createElement("div");
+    d.className = "label";
+    d.style.transform = `rotate(${i*step}deg) translate(12px,-50%)`;
+    d.textContent = name;
+    wheel.appendChild(d);
+  });
+}
+
+function fillPlayers() {
+  const s = document.getElementById("player");
+  s.innerHTML = `<option value="">Выбери себя</option>`;
+  SECTORS.forEach(n => {
+    if (!state.results[n]) {
+      const o = document.createElement("option");
+      o.value = n;
+      o.textContent = n;
+      s.appendChild(o);
+    }
+  });
+}
+
+function play() {
+  if (state.locked) return;
+
+  const p = player.value;
+  if (!p) return alert("Выбери себя");
+
+  if (state.results[p]) return show(p);
+
+  const pool = state.available.filter(n => n !== p);
+  const target = pool[Math.floor(Math.random()*pool.length)];
+
+  state.results[p] = target;
+  state.available = state.available.filter(n => n !== target);
+  save();
+
+  spin(target);
+}
+
+function spin(target) {
+  const index = SECTORS.indexOf(target);
+  const step = 360 / SECTORS.length;
+  const angle = 360 - (index*step + step/2);
+  const turns = 6 + Math.floor(Math.random()*3);
+
+  wheel.style.transform = `rotate(${turns*360 + angle}deg)`;
+
+  setTimeout(() => {
+    alert("🎁 Вы дарите подарок: " + target);
+    showBtn.style.display = "block";
+    checkLock();
+  }, 4800);
+}
+
+function show(player) {
+  alert("🎁 Вы дарите подарок: " + state.results[player]);
+}
+
+function showAgain() {
+  const p = player.value;
+  if (p) show(p);
+}
+
+function checkLock() {
+  if (Object.keys(state.results).length === SECTORS.length) {
+    state.locked = true;
+    save();
+    lockUI();
+  }
+}
+
+function lockUI() {
+  lockMsg.style.display = "block";
+  player.disabled = true;
+}
+
+function admin() {
+  const p = prompt("Пароль админа");
+  if (p !== ADMIN_PASSWORD) return alert("Неверный пароль");
+
+  let text = "Результаты:\n";
+  for (let k in state.results) text += `${k} → ${state.results[k]}\n`;
+
+  if (confirm(text + "\nСБРОСИТЬ ВСЁ?")) {
+    localStorage.removeItem("santa");
+    location.reload();
+  }
+}
+
+function snow() {
+  for (let i=0;i<40;i++){
+    const s=document.createElement("div");
+    s.className="snow";
+    s.textContent="❄";
+    s.style.left=Math.random()*100+"vw";
+    s.style.fontSize=10+Math.random()*18+"px";
+    s.style.animationDuration=6+Math.random()*10+"s";
+    document.body.appendChild(s);
+  }
+}
+
+init();
+</script>
+</body>
+</html>
