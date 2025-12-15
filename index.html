@@ -68,15 +68,33 @@ button:disabled { background: #555; }
   cursor: pointer;
 }
 .locked { color: #ffd166; margin-bottom: 10px; font-size: 1.2rem; }
+/* СНЕГ */
+.snowflake {
+  position: fixed;
+  top: -10px;
+  color: #fff;
+  font-size: 1em;
+  user-select: none;
+  pointer-events: none;
+  animation: fall linear infinite;
+  opacity: 0.8;
+}
+@keyframes fall {
+  to { transform: translateY(110vh); }
+}
 </style>
 </head>
 <body>
+<audio id="music" loop>
+  <source src="https://cdn.pixabay.com/download/audio/2022/10/25/audio_946b6c6c8a.mp3" type="audio/mpeg">
+</audio>
 <div class="container">
   <h1>🎅 Тайный Санта 🎄</h1>
 
   <div id="lockMsg" class="locked" style="display:none">Игра завершена 🎁</div>
 
-  <select id="player"></select>
+  <button id="musicBtn" class="secondary">🎵 Музыка</button>
+<select id="player"></select>
   <button id="playBtn">Играть</button>
   <button id="showBtn" class="secondary" style="display:none">Показать результат ещё раз</button>
 
@@ -100,12 +118,15 @@ const box = document.getElementById("animationBox");
 const playBtn = document.getElementById("playBtn");
 const showBtn = document.getElementById("showBtn");
 const lockMsg = document.getElementById("lockMsg");
+const music = document.getElementById("music");
+const musicBtn = document.getElementById("musicBtn");("lockMsg");
 
 function save() {
   localStorage.setItem("santa_simple", JSON.stringify(state));
 }
 
 function init() {
+  startSnow();
   fillPlayers();
   if (state.locked) lockUI();
 }
@@ -194,6 +215,28 @@ showBtn.onclick = () => showResult(playerSel.value);
 document.getElementById("adminBtn").onclick = admin;
 
 init();
+
+musicBtn.onclick = () => {
+  if (music.paused) {
+    music.play();
+    musicBtn.textContent = "⏸ Музыка";
+  } else {
+    music.pause();
+    musicBtn.textContent = "🎵 Музыка";
+  }
+};
+
+function startSnow() {
+  for (let i = 0; i < 25; i++) {
+    const s = document.createElement("div");
+    s.className = "snowflake";
+    s.textContent = "❄";
+    s.style.left = Math.random() * 100 + "vw";
+    s.style.fontSize = 10 + Math.random() * 20 + "px";
+    s.style.animationDuration = 5 + Math.random() * 5 + "s";
+    document.body.appendChild(s);
+  }
+}
 </script>
 </body>
 </html>
